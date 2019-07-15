@@ -25,7 +25,7 @@ get_docker_command() {
         moduleVolumeString="-v $modulePath:/pip_modules"
     fi
 
-    pyd_echo "docker run -it --rm --name $imageName -e PYTHONUSERBASE=/pip_modules -e PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/pip_modules/bin -v $PWD:/usr/src/app $moduleVolumeString -w /usr/src/app python:$pythonVersion"
+    pyd_echo "docker run -i --rm --name $imageName -e PYTHONUSERBASE=/pip_modules -e PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/pip_modules/bin -v $PWD:/usr/src/app $moduleVolumeString -w /usr/src/app python:$pythonVersion"
 
 }
 
@@ -94,7 +94,11 @@ else
         ;;
 
     *)
-        dockerCmd="$(get_docker_command) python $@"
+        if [ ! -z $1 ] ; then
+            dockerCmd="$(get_docker_command) python -u $@"
+        else
+            print_help
+        fi
         ;;
 
     esac
