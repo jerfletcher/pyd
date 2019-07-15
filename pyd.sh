@@ -1,6 +1,6 @@
 #!/bin/bash
 
-modulePath="$PWD/__pdy_modules__"
+modulePath="$PWD/__pyd_modules__"
 
 check_docker() {
 
