@@ -12,6 +12,8 @@ source <path to cloned repo>\pyd.sh
 ```
 Python Docker Executor
 Uses .python-version to determine Python version, default image python:3
+Uses .pyd_id_rsa to authenticate with private github
+Uses .pyd_aws_cred to use boto3 library
 
 Usage:
     pyd <args...>                             Passes through to dockerized python

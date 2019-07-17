@@ -1,12 +1,9 @@
 #!/bin/bash
 
 modulePath="$PWD/__pyd_modules__"
-
-check_docker() {
-
-    echo "this will check for docker"
-
-}
+rsaCertPath="$PWD/.pyd_id_rsa"
+awsCredPath="$PWD/.pyd_aws_cred"
+awsDefaultRegion="us-west-2"
 
 pyd_echo() {
 
@@ -14,18 +11,35 @@ pyd_echo() {
 
 }
 
-get_docker_command() {
+build_docker_command() {
 
     # remove special characters
     removeSlash="${PWD:1}"
     imageName="pyd-${removeSlash//[\/_]/-}"
     pythonVersion="$(get_python_version)"
+
     moduleVolumeString=""
-    if [ -d $modulePath ] || [ "$1" = "req" ]; then
+    if [ -d $modulePath ] || [ "$2" = "req" ]; then
         moduleVolumeString="-v $modulePath:/pip_modules"
     fi
 
-    pyd_echo "docker run -i --rm --name $imageName -e PYTHONUSERBASE=/pip_modules -e PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/pip_modules/bin -v $PWD:/usr/src/app $moduleVolumeString -w /usr/src/app python:$pythonVersion"
+    rsaCertString=""
+    rsaCertBash=""
+    if [ -f $rsaCertPath ]; then
+        rsaCertString="-v $rsaCertPath:/tmp/id_rsa"
+        if [ "$2" = "req" ]; then
+            # only setup known_hosts for github.com
+            rsaCertBash="echo \"    IdentityFile ~/.ssh/id_rsa\" >> /etc/ssh/ssh_config && mkdir /root/.ssh && cp /tmp/id_rsa /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa && ssh-keyscan -H github.com >> ~/.ssh/known_hosts &&"
+        fi
+    fi
+
+    awsCredString=""
+    if [ -f $awsCredPath ]; then
+        #this is getting kind of specific
+        awsCredString="-v $awsCredPath:/root/.aws/credentials -e AWS_DEFAULT_REGION=$awsDefaultRegion"
+    fi
+
+    pyd_echo "docker run -i --rm --name $imageName -e PYTHONUSERBASE=/pip_modules -v $PWD:/usr/src/app $moduleVolumeString $rsaCertString $awsCredString -w /usr/src/app python:$pythonVersion /bin/bash -c '$rsaCertBash $@'"
 
 }
 
@@ -57,6 +71,8 @@ print_help() {
 
     pyd_echo 'Python Docker Executor'
     pyd_echo 'Uses .python-version to determine Python version, default image python:3'
+    pyd_echo 'Uses .pyd_id_rsa to authenticate with private github'
+    pyd_echo 'Uses .pyd_aws_cred to use boto3 library'
     pyd_echo
     pyd_echo 'Usage:'
     pyd_echo '  pyd <args...>                             Passes through to dockerized python'
@@ -82,7 +98,9 @@ if check_if_sourced; then
 else
     case "$1" in
     --req)
-        dockerCmd="$(get_docker_command req) $(install_requirements $2)"
+
+        dockerCmd="$(build_docker_command $(install_requirements $2)) "
+        pyd_echo "$dockerCmd"
         ;;
 
     --help)
@@ -94,8 +112,8 @@ else
         ;;
 
     *)
-        if [ ! -z $1 ] ; then
-            dockerCmd="$(get_docker_command) python -u $@"
+        if [ ! -z $1 ]; then
+            dockerCmd="$(build_docker_command python -u $@)"
         else
             print_help
         fi
