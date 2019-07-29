@@ -4,6 +4,7 @@ modulePath="$PWD/__pyd_modules__"
 rsaCertPath="$PWD/.pyd_id_rsa"
 awsCredPath="$PWD/.pyd_aws_cred"
 awsDefaultRegion="us-west-2"
+isReqCommand=0
 
 pyd_echo() {
 
@@ -19,7 +20,7 @@ build_docker_command() {
     pythonVersion="$(get_python_version)"
 
     moduleVolumeString=""
-    if [ -d $modulePath ] || [ "$2" = "req" ]; then
+    if [ -d $modulePath ] || [ $isReqCommand = 1 ]; then
         moduleVolumeString="-v $modulePath:/pip_modules"
     fi
 
@@ -27,7 +28,7 @@ build_docker_command() {
     rsaCertBash=""
     if [ -f $rsaCertPath ]; then
         rsaCertString="-v $rsaCertPath:/tmp/id_rsa"
-        if [ "$2" = "req" ]; then
+        if [ $isReqCommand = 1 ]; then
             # only setup known_hosts for github.com
             rsaCertBash="echo \"    IdentityFile ~/.ssh/id_rsa\" >> /etc/ssh/ssh_config && mkdir /root/.ssh && cp /tmp/id_rsa /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa && ssh-keyscan -H github.com >> ~/.ssh/known_hosts &&"
         fi
@@ -98,7 +99,7 @@ if check_if_sourced; then
 else
     case "$1" in
     --req)
-
+        isReqCommand=1
         dockerCmd="$(build_docker_command $(install_requirements $2)) "
         pyd_echo "$dockerCmd"
         ;;
